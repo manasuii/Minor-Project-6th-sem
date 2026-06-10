@@ -21,10 +21,9 @@ DT        = PARAMS["dt"]
 Ixx, Iyy, Izz = PARAMS["Ixx"], PARAMS["Iyy"], PARAMS["Izz"]
 
 # Angle weights moderated from 200/200/100; rate (damping) weights raised.
-Q_DIAG = [500.0, 500.0, 250.0,
-           20.0,  20.0,  10.0]
-R_DIAG = [0.005, 0.005, 0.005]
-TERMINAL_MULT = 12.0
+Q_DIAG = [800.0, 800.0, 400.0, 25.0, 25.0, 12.0]   # balanced: [500,500,250,20,20,10]
+R_DIAG = [0.003, 0.003, 0.003]                      # balanced: [0.005]*3
+TERMINAL_MULT = 15.0            
 U_MAX = np.array([ 0.010,  0.010,  0.005])
 U_MIN = np.array([-0.010, -0.010, -0.005])
 
@@ -85,84 +84,42 @@ def build_casadi_nn(weights, biases, X_mean, X_std, Y_mean, Y_std,
 #  Build the NLP once (compiled)
 # ─────────────────────────────────────────
 def build_nlp(nn_fn, N=N_HORIZON):
-    """
-    Build the MPC NLP directly using CasADi symbolics.
-    Returns a compiled ca.Function for fast repeated solving.
-    """
     nx, nu = 6, 3
-    Q  = ca.DM(np.diag(Q_DIAG))
-    R  = ca.DM(np.diag(R_DIAG))
-    Qf = TERMINAL_MULT * Q
+    Q  = ca.DM(np.diag(Q_DIAG)); R = ca.DM(np.diag(R_DIAG)); Qf = TERMINAL_MULT * Q
+    D  = ca.DM(np.tile(U_MAX, N))          # input scaling: u = D * v,  v in [-1, 1]
 
-    # Decision variable: flat vector [u_0, u_1, ..., u_{N-1}]
-    U_flat = ca.MX.sym("U", nu * N)
-    x0_p   = ca.MX.sym("x0", nx)
-    ref_p  = ca.MX.sym("ref", nx)
+    V     = ca.MX.sym("V", nu * N)         # SCALED decision variable
+    x0_p  = ca.MX.sym("x0", nx)
+    ref_p = ca.MX.sym("ref", nx)
 
-    cost = ca.MX(0)
-    g    = []        # constraints (empty — bounds handled via lbx/ubx)
-    x    = x0_p
-
+    cost = ca.MX(0); x = x0_p
     for k in range(N):
-        u_k   = U_flat[k*nu : (k+1)*nu]
-        xu_k  = ca.vertcat(x, u_k)
-        delta = nn_fn(xu_k)
-        x     = x + delta                           # residual update
+        u_k = V[k*nu:(k+1)*nu] * D[k*nu:(k+1)*nu]     # un-scale inside the rollout
+        x   = x + nn_fn(ca.vertcat(x, u_k))
+        e_k = x - ref_p
+        cost += ca.mtimes(e_k.T, ca.mtimes(Q, e_k)) + ca.mtimes(u_k.T, ca.mtimes(R, u_k))
+    e_N = x - ref_p; cost += ca.mtimes(e_N.T, ca.mtimes(Qf, e_N))
 
-        e_k   = x - ref_p
-        cost += ca.mtimes(e_k.T, ca.mtimes(Q, e_k)) \
-              + ca.mtimes(u_k.T, ca.mtimes(R, u_k))
-
-    # Terminal cost (single clean multiplier via Qf)
-    e_N   = x - ref_p
-    cost += ca.mtimes(e_N.T, ca.mtimes(Qf, e_N))
-
-    nlp = {"x": U_flat, "f": cost, "g": ca.vertcat(*g),
-           "p": ca.vertcat(x0_p, ref_p)}
-
-    # ── Solver: sqpmethod + osqp (fast for small structured NLPs) ──
-    solver_opts = {
-        "qpsol":        "osqp",
-        "qpsol_options": {
-            "osqp.verbose":       False,
-            "osqp.eps_abs":       1e-4,
-            "osqp.eps_rel":       1e-4,
-            "osqp.max_iter":      1000,
-            "osqp.warm_starting": True,
-        },
-        "print_header":    False,
-        "print_iteration": False,
-        "print_time":      False,
-        "max_iter":        15,          # SQP outer iterations
-        "tol_pr":          1e-4,
-        "tol_du":          1e-4,
+    nlp = {"x": V, "f": cost, "p": ca.vertcat(x0_p, ref_p)}
+    opts = {
+        "qpsol": "osqp",
+        "qpsol_options": {"osqp.verbose": False, "osqp.eps_abs": 1e-7,
+                          "osqp.eps_rel": 1e-7, "osqp.max_iter": 4000,
+                          "error_on_fail": False},
+        "hessian_approximation": "gauss-newton",      # <-- the key line
+        "print_header": False, "print_iteration": False, "print_time": False,
+        "max_iter": 30,                               # balanced: 25
     }
-
     try:
-        solver = ca.nlpsol("mpc_solver", "sqpmethod", nlp, solver_opts)
-        print("  Using solver: SQP + OSQP")
+        solver = ca.nlpsol("mpc_solver", "sqpmethod", nlp, opts)
+        print("  Using solver: SQP + OSQP (Gauss-Newton, input-scaled)")
     except Exception:
-        print("  OSQP not found — falling back to IPOPT")
-        ipopt_opts = {
-            "ipopt.print_level":             0,
-            "print_time":                    0,
-            "ipopt.max_iter":                30,
-            "ipopt.tol":                     1e-3,
-            "ipopt.acceptable_tol":          1e-2,
-            "ipopt.acceptable_iter":         3,
-            "ipopt.hessian_approximation":   "limited-memory",
-            "ipopt.warm_start_init_point":   "yes",
-            "ipopt.mu_init":                 1e-2,
-        }
-        solver = ca.nlpsol("mpc_solver", "ipopt", nlp, ipopt_opts)
-        print("  Using solver: IPOPT (L-BFGS)")
+        opts["qpsol"] = "qrqp"; opts["qpsol_options"] = {"print_iter": False, "print_header": False}
+        solver = ca.nlpsol("mpc_solver", "sqpmethod", nlp, opts)   # built-in, no install
+        print("  OSQP unavailable — using SQP + qrqp")
 
-    # Input bounds
-    lbu = np.tile(U_MIN, N)
-    ubu = np.tile(U_MAX, N)
-
-    return solver, lbu, ubu
-
+    lbv = -np.ones(nu * N); ubv = np.ones(nu * N)     # bounds on the SCALED variable
+    return solver, lbv, ubv
 
 # ─────────────────────────────────────────
 #  MPC Class
@@ -182,35 +139,19 @@ class SurrogateMPC:
         )
 
         print("Compiling MPC problem...")
-        self.solver, self.lbu, self.ubu = build_nlp(self.nn_fn, N)
-
-        # Warm-start buffer
-        self._u0 = np.zeros(self.nu * N)
+        self.solver, self.lbv, self.ubv = build_nlp(self.nn_fn, N)
+        self._v0 = np.zeros(self.nu * N)              # was self._u0
         print("MPC ready.\n")
 
     def solve(self, state, reference):
-        p_val = np.concatenate([state, reference])
-
         t0  = time.perf_counter()
-        sol = self.solver(
-            x0=self._u0,
-            p=p_val,
-            lbx=self.lbu,
-            ubx=self.ubu,
-            lbg=[],
-            ubg=[],
-        )
-        ms = (time.perf_counter() - t0) * 1000
-
-        u_seq = np.array(sol["x"]).flatten()
+        sol = self.solver(x0=self._v0, p=np.concatenate([state, reference]),
+                          lbx=self.lbv, ubx=self.ubv)
+        ms  = (time.perf_counter() - t0) * 1000
+        v_seq   = np.array(sol["x"]).flatten()
         success = self.solver.stats()["success"]
-
-        # Warm-start shift
-        u_mat = u_seq.reshape(self.N, self.nu)
-        self._u0 = np.roll(u_mat, -1, axis=0).flatten()
-
-        return u_seq[:self.nu], ms, success
-
+        self._v0 = np.roll(v_seq.reshape(self.N, self.nu), -1, axis=0).flatten()
+        return v_seq[:self.nu] * U_MAX, ms, success   # un-scale to physical torque
 
 # ─────────────────────────────────────────
 #  Test

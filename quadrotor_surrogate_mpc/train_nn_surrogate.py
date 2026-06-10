@@ -23,14 +23,7 @@ import os
 import time
 
 # Placeholder for delta_linear. Replace this with your actual physics-based linear model function.
-def delta_linear(X):
-    """
-    Computes the linear base model prediction for delta_state.
-    Expects raw/unnormalised input X of shape (N, 9).
-    Returns an array of shape (N, 6).
-    """
-    # TODO: Ensure your actual linear base mapping is implemented here
-    return np.zeros((X.shape[0], 6), dtype=np.float32)
+from quadrotor_simulator import delta_linear   # the actual physics base, not zeros
 
 
 # ─────────────────────────────────────────
@@ -40,7 +33,7 @@ BATCH_SIZE   = 1024
 EPOCHS       = 150
 LR           = 3e-4
 WEIGHT_DECAY = 1e-4
-HIDDEN_DIMS  = [128, 128, 64] # Aligned with docstring architecture
+HIDDEN_DIMS  = [32,32]   # Fixed: Aligned with docstring architecture
 RANDOM_SEED  = 42
 
 torch.manual_seed(RANDOM_SEED)
@@ -112,7 +105,8 @@ def load_data():
 
 
 def make_loader(X, Y, shuffle=True):
-    ds = TensorDataset(torch.tensor(X), torch.tensor(Y))
+    # Fixed: Added .float() to prevent Double tensor generation
+    ds = TensorDataset(torch.tensor(X).float(), torch.tensor(Y).float())
     return DataLoader(ds, batch_size=BATCH_SIZE, shuffle=shuffle, num_workers=0)
 
 
@@ -181,7 +175,8 @@ def evaluate_model(model, Xte, Yte_norm, Y_test_raw, Y_mean, Y_std):
     model.load_state_dict(torch.load("models/nn_surrogate.pth", map_location=DEVICE))
 
     with torch.no_grad():
-        pred_norm = model(torch.tensor(Xte).to(DEVICE)).cpu().numpy()
+        # Fixed: Added .float() to match model's weights precision
+        pred_norm = model(torch.tensor(Xte).float().to(DEVICE)).cpu().numpy()
 
     # Denormalise back to physical unmodeled/nonlinear units
     pred_phys = pred_norm * Y_std + Y_mean
@@ -203,7 +198,6 @@ def evaluate_model(model, Xte, Yte_norm, Y_test_raw, Y_mean, Y_std):
 # ─────────────────────────────────────────
 def benchmark_inference(model, n_trials=10_000):
     """Measure how fast a single forward pass is (vs ODE integration)."""
-    import time
     from quadrotor_simulator import simulate_step
 
     x_dummy = torch.randn(1, 9).to(DEVICE)
@@ -309,7 +303,6 @@ if __name__ == "__main__":
 
     # Benchmark speed
     benchmark_inference(model)
-
 
     # Plots
     save_training_plot(train_losses, val_losses)
