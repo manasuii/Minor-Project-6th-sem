@@ -26,11 +26,10 @@ The codebase maps directly to three primary research objectives:
 ---
 
 
-## 🛠️ Installation & Setup
+## 📂 Repository Structure
 
-This repository is completely open-source and ready for CPU-only or GPU-accelerated environments.
-
-## Repository Structure
+```text
+.
 ├── data/                    # Generated training, validation, and test datasets
 ├── models/                  # Saved weights and configurations (.pth, .pkl, .npz)
 ├── plots/                   # Multi-step rollouts, sample-efficiency, and trajectory plots
@@ -39,7 +38,6 @@ This repository is completely open-source and ready for CPU-only or GPU-accelera
 ├── quadrotor_simulator.py   # High-fidelity nonlinear plant dynamics
 ├── run_all.py               # Master orchestration script
 └── requirements.txt         # Project dependencies
-
 1. Clone the repository:
    
    ```bash
