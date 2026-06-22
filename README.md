@@ -25,17 +25,6 @@ The codebase maps directly to three primary research objectives:
 
 ---
 
-## Individual Stages
-#,Command,Primary Output/Artifacts,Objective
-1,python validate_simulator.py,Energy/momentum conservation report & ODE timing logs,O1
-2,python generate_dataset.py,"data/train|val|test.npz, normstats.npz",O1
-3,python train_nn_surrogate.py,"models/nn_surrogate.pth (+ cfg), training/parity plots",O2
-4,python train_gp_surrogate.py,"models/gp_surrogate_0..5.pth, gp_cfg.npz",O2
-5,python train_pce_surrogate.py,models/pce_surrogate.pkl,O2
-6,python evaluate_surrogates.py,"plots/rollout_error.png, sample_efficiency.png, latency_comparison.png, results/surrogate_comparison.csv",O2
-7,python mpc_surrogate.py,Builds and benchmarks the Surrogate-MPC controllers,O3
-8,python baseline_controllers.py,"Evaluates PID, Lin-MPC, and Full ODE-MPC benchmarks",O3
-9,python run_experiments.py,"Scenario plots (plots/exp1..6_*.png), results/summary_table.csv, results/realtime_feasibility.csv",O3
 
 ## 🛠️ Installation & Setup
 
