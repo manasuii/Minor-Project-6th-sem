@@ -1,4 +1,5 @@
-Controller,Step RMSE (rad),Step Settling (s),Step Overshoot (%),Sine RMSE (rad),Avg Solve (ms)
-Surrogate-MPC,0.102123,0.95,1.7,0.06684,11.96
-Linearised-MPC,0.105087,1.75,0.0,0.100863,15.94
-PID,0.104664,4.35,2.0,0.100188,0.02
+Controller,Step RMSE (rad),Step Settling (s),Step Overshoot (%),Yaw RMSE (rad),Sine RMSE (rad),Avg Solve (ms)
+Surrogate-MPC,0.102114,0.95,1.7,0.223529,0.061318,4.06
+ODE-MPC,0.102219,1.0,0.0,0.224035,0.061737,33.69
+Linearised-MPC,0.102637,1.2,0.0,0.21837,0.067263,9.55
+PID,0.104664,4.35,2.0,0.234903,0.100188,0.02

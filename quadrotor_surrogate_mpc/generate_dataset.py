@@ -50,7 +50,7 @@ RANDOM_SEED  = 42
 def generate_samples(n_samples, seed=RANDOM_SEED):
     """
     Generate (state, input) pairs using Latin Hypercube Sampling.
-    LHS ensures uniform coverage — much better than pure random sampling.
+    
     """
     print(f"Generating {n_samples:,} samples with Latin Hypercube Sampling...")
 
@@ -100,7 +100,7 @@ def build_dataset(n_samples=N_SAMPLES):
 
 
 def split_and_save(X, Y, Y_abs, save_dir="data"):
-    """Split into train/val/test and save to disk."""
+    """Split into train/val/test and save."""
     os.makedirs(save_dir, exist_ok=True)
     rng = np.random.default_rng(RANDOM_SEED)
 

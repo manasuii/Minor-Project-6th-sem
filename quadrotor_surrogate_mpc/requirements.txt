@@ -1,0 +1,11 @@
+numpy
+scipy
+matplotlib
+pandas
+torch
+casadi
+gpytorch
+chaospy
+osqp
+joblib
+tqdm

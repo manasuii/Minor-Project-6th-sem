@@ -1,0 +1,5 @@
+Controller,Avg Solve (ms),Max Solve (ms),Max Rate (Hz),Real-time (<= 50 ms)
+Surrogate-MPC,4.06,5.25,246.3,YES
+ODE-MPC,33.69,50.22,29.7,YES
+Linearised-MPC,9.55,13.38,104.8,YES
+PID,0.02,0.04,64882.4,YES
