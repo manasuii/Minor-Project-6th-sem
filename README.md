@@ -1,4 +1,4 @@
-# Surrogate Model Predictive Control of Quadrotor Attitude Dynamics
+# Surrogate Model Predictive Control of Quadrotor Attitude Dynamics via Data Driven Approximation
 via Data Driven Approximation
 
 A high-performance, physics-informed benchmarking framework comparing Surrogate Model Predictive Control (Surrogate-MPC) paradigms for 3-DOF quadrotor attitude stabilisation. This codebase delivers a comprehensive, **three-way approximator comparison** between a Residual Neural Network (**ResNN**), Gaussian Processes (**GP**), and Polynomial Chaos Expansion (**PCE**).
