@@ -185,10 +185,4 @@ Populate these from your own `results/*.csv` after running the pipeline — left
 | `matplotlib`, `pandas` | plots and result tables |
 | `tqdm` | progress bars |
 
-## License
 
-*(Not yet specified — add a `LICENSE` file and update this section, e.g. MIT / BSD-3-Clause / Apache-2.0.)*
-
-## Acknowledgments
-
-*(Add supervisor, coursework, or related-work acknowledgments here as appropriate.)*
